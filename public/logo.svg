@@ -1,0 +1,19 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="octopus-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff0671"/>
+      <stop offset="100%" stop-color="#a8054a"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="16" cy="13" rx="9" ry="7" fill="url(#octopus-fill)"/>
+  <ellipse cx="13.5" cy="11" rx="1.5" ry="1.2" fill="#C9A86C"/>
+  <ellipse cx="18.5" cy="11" rx="1.5" ry="1.2" fill="#C9A86C"/>
+  <path d="M7 16 v8 q0 2 2 2" stroke="url(#octopus-fill)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <path d="M25 16 v8 q0 2 -2 2" stroke="url(#octopus-fill)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <path d="M10 18 v7 q0 1.5 1.5 1.5" stroke="url(#octopus-fill)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M22 18 v7 q0 1.5 -1.5 1.5" stroke="url(#octopus-fill)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M13 19.5 v6 q0 1 1 1" stroke="url(#octopus-fill)" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M19 19.5 v6 q0 1 -1 1" stroke="url(#octopus-fill)" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M15 20 v5 q0 0.8 0.8 0.8" stroke="url(#octopus-fill)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <path d="M17 20 v5 q0 0.8 -0.8 0.8" stroke="url(#octopus-fill)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+</svg>
