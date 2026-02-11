@@ -123,9 +123,14 @@ export const App: React.FC = () => {
             <img src={partenaireImg} alt="Partenaires" />
           </div>
 
-          <button className="hero-cta" type="button">
+          <a
+            className="hero-cta"
+            href="https://portfolio.viviworks.ai/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Voir notre portfolio
-          </button>
+          </a>
         </section>
 
         <section className="form-card" aria-label="Questionnaire de brief">

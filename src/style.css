@@ -172,6 +172,8 @@ body {
 }
 
 .hero-cta {
+  display: inline-block;
+  text-decoration: none;
   align-self: flex-start;
   padding: 14px 32px;
   border-radius: 12px;
