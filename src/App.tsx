@@ -287,6 +287,19 @@ export const App: React.FC = () => {
                   onChange={handleFormChange}
                 />
               </div>
+
+              <div className="form-field">
+                <label className="field-label" htmlFor="phone">
+                  Numéro de téléphone
+                </label>
+                <input
+                  id="phone"
+                  type="tel"
+                  className="text-input"
+                  placeholder="Ex: +33 6 12 34 56 78"
+                  onChange={handleFormChange}
+                />
+              </div>
             </section>
 
             <section className="form-section">

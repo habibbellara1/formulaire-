@@ -135,6 +135,7 @@ app.post('/api/submit', async (req, res) => {
       email: 'Adresse e-mail',
       fullname: 'Nom et prénom',
       company: "Nom de l'entreprise / projet",
+      phone: 'Numéro de téléphone',
       sector: "Secteur d'activité",
       style: 'Style de logo préféré',
       wantedColors: 'Couleurs souhaitées',
