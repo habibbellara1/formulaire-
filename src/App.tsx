@@ -39,6 +39,18 @@ export const App: React.FC = () => {
 
   const handleSubmit = async () => {
     setSubmitError(null);
+
+    const email = (formDataRef.current?.email || '').trim();
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailValid) {
+      setSubmitError(
+        email.length === 0
+          ? 'Veuillez renseigner votre adresse e-mail.'
+          : 'Adresse e-mail invalide.',
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload = {
@@ -169,6 +181,7 @@ export const App: React.FC = () => {
                 <input
                   id="email"
                   type="email"
+                  required
                   className="text-input"
                   placeholder="Votre adresse e-mail"
                   onChange={handleFormChange}
