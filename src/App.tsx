@@ -34,11 +34,11 @@ export const App: React.FC = () => {
       const files = t.files ? Array.from(t.files) : [];
       if (t.id === 'file') {
         selectedFilesRef.current = files;
-        setReferenceFileLabel(files.length ? (files.length > 1 ? `${files.length} fichiers` : files[0].name) : '');
+        setReferenceFileLabel(files.length ? (files.length > 1 ? `${files.length} fichiers` : (files[0].name.length > 25 ? files[0].name.slice(0, 22) + '...' + files[0].name.slice(files[0].name.lastIndexOf('.')) : files[0].name)) : '');
         delete formDataRef.current[t.id];
       } else if (t.id === 'exemplaire') {
         selectedExemplaireFilesRef.current = files;
-        setExemplaireFileLabel(files.length ? (files.length > 1 ? `${files.length} fichiers` : files[0].name) : '');
+        setExemplaireFileLabel(files.length ? (files.length > 1 ? `${files.length} fichiers` : (files[0].name.length > 25 ? files[0].name.slice(0, 22) + '...' + files[0].name.slice(files[0].name.lastIndexOf('.')) : files[0].name)) : '');
         delete formDataRef.current[t.id];
       } else {
         const names = files.map((f) => f.name).join(', ');
@@ -210,6 +210,7 @@ export const App: React.FC = () => {
       <div className="page-content">
         <section className="hero">
           <header className="hero-header">
+            <p className="hero-promo">Réduction de -20% sur toutes les prestations</p>
             <p className="hero-kicker">Formulaire</p>
             <h1 className="hero-title">
               Formulaire <span>Complet</span>

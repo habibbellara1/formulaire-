@@ -134,6 +134,10 @@ body {
     max-width: 100%;
   }
 
+  .hero-promo {
+    font-size: 0.85rem;
+  }
+
   .hero-kicker {
     font-size: 0.8rem;
     letter-spacing: 0.12em;
@@ -279,6 +283,14 @@ body {
 
 .hero-header {
   max-width: 460px;
+}
+
+.hero-promo {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ff0033;
+  letter-spacing: 0.02em;
 }
 
 .hero-kicker {
@@ -703,6 +715,14 @@ body {
 .logo-step-upload-text {
   font-size: 0.95rem;
   color: #9ca3af;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-all;
+  text-align: center;
+  padding: 0 8px;
+  box-sizing: border-box;
 }
 
 .logo-step-upload-zone:hover .logo-step-upload-text {

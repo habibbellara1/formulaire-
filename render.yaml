@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: form-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: TO_EMAIL
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false
