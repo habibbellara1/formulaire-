@@ -557,6 +557,158 @@ body {
   filter: brightness(1.05);
 }
 
+/* Stepper Section Logo (À propos logo, Naissance d'idée, Client cible, Exemplaire) */
+.logo-stepper {
+  margin-bottom: 28px;
+}
+
+.logo-stepper-track {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  padding-top: 8px;
+}
+
+.logo-stepper-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 20px;
+  height: 2px;
+  background-color: #374151;
+  border-radius: 2px;
+  z-index: 0;
+}
+
+.logo-stepper-line-fill {
+  position: absolute;
+  left: 0;
+  top: 20px;
+  height: 2px;
+  max-width: 100%;
+  background: linear-gradient(90deg, #ff0671, #9333ea);
+  border-radius: 2px;
+  z-index: 0;
+  transition: width 0.25s ease-out;
+}
+
+.logo-stepper-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  position: relative;
+  z-index: 1;
+}
+
+.logo-stepper-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #4b5563;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.logo-stepper-step-active .logo-stepper-dot {
+  background-color: #ff0671;
+  box-shadow: 0 0 12px rgba(255, 6, 113, 0.7);
+}
+
+.logo-stepper-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+  transition: color 0.2s;
+}
+
+.logo-stepper-step-active .logo-stepper-label {
+  color: #ff0671;
+}
+
+.logo-stepper-step:hover .logo-stepper-label {
+  color: #9ca3af;
+}
+
+.logo-stepper-step:hover .logo-stepper-dot {
+  background-color: #6b7280;
+}
+
+.logo-stepper-actions {
+  margin-top: 28px;
+}
+
+.logo-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.logo-step-textarea {
+  min-height: 120px;
+  background-color: rgba(31, 41, 55, 0.9);
+}
+
+/* 4e interface du stepper : Exemplaire – zone d'import */
+.logo-step-exemplaire {
+  margin-top: 8px;
+}
+
+.logo-step-exemplaire-title {
+  margin: 0 0 20px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.logo-step-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 220px;
+  padding: 32px;
+  background-color: rgba(31, 41, 55, 0.9);
+  border: 1px solid #374151;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.logo-step-upload-zone:hover {
+  border-color: #ff0671;
+  background-color: rgba(31, 41, 55, 0.95);
+}
+
+.logo-step-upload-icon {
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-step-upload-zone:hover .logo-step-upload-icon {
+  color: #9ca3af;
+}
+
+.logo-step-upload-text {
+  font-size: 0.95rem;
+  color: #9ca3af;
+}
+
+.logo-step-upload-zone:hover .logo-step-upload-text {
+  color: #e5e7eb;
+}
+
 .stepper {
   margin-bottom: 20px;
 }

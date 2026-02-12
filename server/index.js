@@ -1,19 +1,17 @@
 import 'dotenv/config';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
-import multer from 'multer';
 import nodemailer from 'nodemailer';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
-app.use(express.json({ limit: '512kb' }));
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo par fichier
-}).any(); // accepte 'data' (texte) + 'files' (fichiers) pour que req.body.data soit bien rempli
+// Tout le formulaire (y compris fichiers en base64) est envoyé en JSON
+app.use(express.json({ limit: '50mb' }));
 
 function escapeHtml(s) {
   if (typeof s !== 'string') return '';
@@ -60,37 +58,60 @@ function buildEmailHtml(data) {
 </html>`;
 }
 
-app.post('/api/submit', (req, res, next) => {
-  const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data');
-  if (isMultipart) {
-    upload(req, res, (err) => {
-      if (err) return res.status(400).json({ success: false, message: 'Erreur upload fichier.' });
-      next();
-    });
-  } else {
-    next();
-  }
-}, async (req, res) => {
+app.post('/api/submit', async (req, res) => {
   try {
-    let body = req.body || {};
-    const rawData = req.body && req.body.data;
-    if (typeof rawData === 'string') {
-      try {
-        body = JSON.parse(rawData);
-      } catch (e) {
-        console.error('Parse body.data:', e);
-        return res.status(400).json({ success: false, message: 'Format des données invalide.' });
-      }
-    }
+    let body = req.body;
     if (!body || typeof body !== 'object') {
-      return res.status(400).json({ success: false, message: 'Données formulaire manquantes. Réessayez sans pièce jointe ou vérifiez votre connexion.' });
-    }
-    const email = (body.email || '').trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ success: false, message: 'Adresse e-mail invalide.' });
+      return res.status(400).json({ success: false, message: 'Aucune donnée reçue.' });
     }
 
-    const labels = {
+    const rawFiles = body._files;
+    const filesFromBase64 = Array.isArray(rawFiles)
+      ? rawFiles
+      : rawFiles
+          ? [rawFiles]
+          : [];
+    delete body._files;
+
+    if (rawFiles !== undefined) {
+      console.log('[submit] _files reçus:', filesFromBase64.length, filesFromBase64.length ? '(noms: ' + filesFromBase64.map((f) => f && f.name).join(', ') + ')' : '');
+    }
+
+    const attachments = [];
+    const tempFiles = [];
+    for (const f of filesFromBase64) {
+      if (!f || typeof f.data !== 'string' || !f.name) continue;
+      const base64Clean = String(f.data).replace(/\s/g, '');
+      if (!base64Clean.length) continue;
+      try {
+        const buf = Buffer.from(base64Clean, 'base64');
+        if (buf.length === 0) continue;
+        const ext = path.extname(f.name) || '';
+        const tmpPath = path.join(os.tmpdir(), `form-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+        fs.writeFileSync(tmpPath, buf);
+        tempFiles.push(tmpPath);
+        attachments.push({
+          filename: String(f.name),
+          path: tmpPath,
+        });
+      } catch (err) {
+        console.error('[submit] Erreur pièce jointe', f.name, err.message);
+      }
+    }
+
+    try {
+      if (attachments.length > 0) {
+        console.log('[submit] Pièces jointes à envoyer:', attachments.length, attachments.map((a) => a.filename));
+      }
+
+    const email = (body.email || '').trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'Adresse e-mail invalide.' });
+      }
+
+      const labels = {
       email: 'Adresse e-mail',
       fullname: 'Nom et prénom',
       company: "Nom de l'entreprise / projet",
@@ -119,64 +140,73 @@ app.post('/api/submit', (req, res, next) => {
       webStyle: 'Style de design préféré (web)',
       webTech: 'Technologies ou frameworks préférés',
       webNotes: 'Informations complémentaires (web)',
-      mobileType: "Type d'application mobile",
-      mobilePlatformIos: 'Plateforme iOS',
-      mobilePlatformAndroid: 'Plateforme Android',
-      mobilePlatformCross: 'Plateforme Cross-platform',
-      mobileFeatures: 'Fonctionnalités principales (mobile)',
-      mobileStyle: 'Style de design préféré (mobile)',
-      mobileNotes: 'Informations complémentaires (mobile)',
-    };
+      };
 
-    const dataForEmail = {};
-    for (const [key, label] of Object.entries(labels)) {
-      let v = body[key];
-      if (v === 'true') v = 'Oui';
-      if (v === 'false') continue;
-      if (v !== undefined && v !== null && String(v).trim() !== '') {
-        dataForEmail[label] = Array.isArray(v) ? v.join(', ') : String(v);
+      const dataForEmail = {};
+      for (const [key, label] of Object.entries(labels)) {
+        let v = body[key];
+        if (v === 'true') v = 'Oui';
+        if (v === 'false') continue;
+        if (v !== undefined && v !== null && String(v).trim() !== '') {
+          dataForEmail[label] = Array.isArray(v)
+            ? v.join(', ')
+            : String(v);
+        }
+      }
+
+      // Fichier de référence : afficher les noms des pièces jointes réelles (pas un champ texte)
+      if (attachments.length > 0) {
+        dataForEmail['Fichier de référence (étape 1)'] = attachments.map((a) => a.filename).join(', ');
+      }
+
+      const toEmail = process.env.TO_EMAIL;
+      if (!toEmail) {
+        console.error('TO_EMAIL non configuré');
+        return res
+          .status(500)
+          .json({
+            success: false,
+            message: 'Configuration serveur manquante.',
+          });
+      }
+
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        to: toEmail,
+        subject: `Formulaire Complet – ${email}`,
+        html: buildEmailHtml(dataForEmail),
+        text: Object.entries(dataForEmail)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join('\n'),
+        attachments:
+          attachments.length > 0 ? attachments : undefined,
+      });
+
+      res.json({
+        success: true,
+        message: 'Merci. Votre formulaire a bien été envoyé.',
+      });
+    } finally {
+      for (const p of tempFiles) {
+        try { fs.unlinkSync(p); } catch (_) {}
       }
     }
-
-    const files = req.files || [];
-    if (files.length > 0) {
-      dataForEmail['Fichiers joints'] = files.map((f) => f.originalname).join(', ');
-    }
-
-    const attachments = files.map((f) => ({
-      filename: f.originalname,
-      content: f.buffer,
-    }));
-
-    const toEmail = process.env.TO_EMAIL;
-    if (!toEmail) {
-      console.error('TO_EMAIL non configuré');
-      return res.status(500).json({ success: false, message: 'Configuration serveur manquante.' });
-    }
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to: toEmail,
-      subject: `Formulaire Complet – ${email}`,
-      html: buildEmailHtml(dataForEmail),
-      text: Object.entries(dataForEmail).map(([k, v]) => `${k}: ${v}`).join('\n'),
-      attachments: attachments.length > 0 ? attachments : undefined,
-    });
-
-    res.json({ success: true, message: 'Merci. Votre formulaire a bien été envoyé.' });
   } catch (err) {
     console.error('Erreur envoi email:', err);
-    res.status(500).json({ success: false, message: 'Erreur lors de l\'envoi. Réessayez plus tard.' });
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de l'envoi. Réessayez plus tard.",
+    });
   }
 });
 

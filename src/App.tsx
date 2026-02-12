@@ -8,13 +8,18 @@ const partenaireImg =
 // En développement : http://localhost:3001 (via `npm run server` ou `npm run start`)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-type Service = 'logo' | 'webapp' | 'mobile';
+type Service = 'logo' | 'webapp' | 'visuel';
 
 export const App: React.FC = () => {
   const [service, setService] = useState<Service>('logo');
   const formDataRef = useRef<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedFilesRef = useRef<File[]>([]);
+  const exemplaireFileInputRef = useRef<HTMLInputElement>(null);
+  const selectedExemplaireFilesRef = useRef<File[]>([]);
   const [referenceFileLabel, setReferenceFileLabel] = useState<string>('');
+  const [exemplaireFileLabel, setExemplaireFileLabel] = useState<string>('');
+  const [logoStep, setLogoStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -27,10 +32,17 @@ export const App: React.FC = () => {
     const t = e.target;
     if (t.type === 'file' && t instanceof HTMLInputElement) {
       const files = t.files ? Array.from(t.files) : [];
-      const names = files.map((f) => f.name).join(', ');
-      formDataRef.current[t.id] = names;
       if (t.id === 'file') {
+        selectedFilesRef.current = files;
         setReferenceFileLabel(files.length ? (files.length > 1 ? `${files.length} fichiers` : files[0].name) : '');
+        delete formDataRef.current[t.id];
+      } else if (t.id === 'exemplaire') {
+        selectedExemplaireFilesRef.current = files;
+        setExemplaireFileLabel(files.length ? (files.length > 1 ? `${files.length} images` : files[0].name) : '');
+        delete formDataRef.current[t.id];
+      } else {
+        const names = files.map((f) => f.name).join(', ');
+        formDataRef.current[t.id] = names;
       }
     } else if (t.type === 'checkbox' && t instanceof HTMLInputElement) {
       formDataRef.current[t.id] = t.checked ? 'true' : 'false';
@@ -88,31 +100,59 @@ export const App: React.FC = () => {
     setSubmitting(true);
     try {
       // Toujours reprendre l'email depuis le DOM pour l'envoi (évite tout décalage)
-      const emailForPayload = (document.getElementById('email') as HTMLInputElement | null)?.value?.trim() ?? '';
+      const emailForPayload =
+        (document.getElementById('email') as HTMLInputElement | null)
+          ?.value?.trim() ?? '';
       const payload = {
         ...formDataRef.current,
         email: emailForPayload,
       };
 
-      const fileInput = fileInputRef.current;
-      const files = fileInput?.files ? Array.from(fileInput.files) : [];
+      const filesFromRef = selectedFilesRef.current.length
+        ? selectedFilesRef.current
+        : (fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : []);
+      const filesFromExemplaire = selectedExemplaireFilesRef.current.length
+        ? selectedExemplaireFilesRef.current
+        : (exemplaireFileInputRef.current?.files ? Array.from(exemplaireFileInputRef.current.files) : []);
+      const files = [...filesFromRef, ...filesFromExemplaire];
       const hasFiles = files.length > 0;
 
-      const res = hasFiles
-        ? await fetch(`${API_URL}/api/submit`, {
-            method: 'POST',
-            body: (() => {
-              const formData = new FormData();
-              formData.append('data', JSON.stringify(payload));
-              files.forEach((f) => formData.append('files', f));
-              return formData;
-            })(),
-          })
-        : await fetch(`${API_URL}/api/submit`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
+      const bodyToSend = hasFiles
+        ? (async () => {
+            const filesBase64 = await Promise.all(
+              files.map(
+                (f) =>
+                  new Promise<{ name: string; data: string; type: string }>(
+                    (resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const dataUrl = reader.result as string;
+                        const b64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+                        if (b64 && b64.length > 0) {
+                          resolve({
+                            name: f.name,
+                            data: b64,
+                            type: f.type || 'application/octet-stream',
+                          });
+                        } else {
+                          reject(new Error('Lecture fichier échouée'));
+                        }
+                      };
+                      reader.onerror = () => reject(reader.error);
+                      reader.readAsDataURL(f);
+                    }
+                  )
+              )
+            );
+            return { ...payload, _files: filesBase64 };
+          })()
+        : payload;
+
+      const res = await fetch(`${API_URL}/api/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(await bodyToSend),
+      });
       const text = await res.text();
       let data: { message?: string } = {};
       try {
@@ -286,15 +326,15 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={service === 'mobile'}
+                  aria-selected={service === 'visuel'}
                   className={
-                    service === 'mobile'
+                    service === 'visuel'
                       ? 'service-tab service-tab-active'
                       : 'service-tab'
                   }
-                  onClick={() => setService('mobile')}
+                  onClick={() => setService('visuel')}
                 >
-                  Application Mobile
+                  Visuel
                 </button>
               </div>
             </section>
@@ -303,137 +343,288 @@ export const App: React.FC = () => {
               <section className="form-section">
                 <p className="form-section-kicker">Section Logo</p>
 
-                <div className="form-field">
-                  <label className="field-label" htmlFor="sector">
-                    Secteur d&apos;activité
-                  </label>
-                  <select
-                    id="sector"
-                    className="select-input"
-                    defaultValue=""
-                    onChange={handleFormChange}
-                  >
-                    <option value="" disabled>
-                      -- Sélectionnez --
-                    </option>
-                    <option value="tech">Technologie</option>
-                    <option value="sante">Santé</option>
-                    <option value="education">Éducation</option>
-                    <option value="autre">Autre</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label className="field-label" htmlFor="style">
-                    Style de logo préféré
-                  </label>
-                  <select
-                    id="style"
-                    className="select-input"
-                    defaultValue=""
-                    onChange={handleFormChange}
-                  >
-                    <option value="" disabled>
-                      -- Sélectionnez --
-                    </option>
-                    <option value="minimaliste">Minimaliste</option>
-                    <option value="moderne">Moderne</option>
-                    <option value="classique">Classique</option>
-                    <option value="illustratif">Illustratif</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label className="field-label" htmlFor="wantedColors">
-                    Couleurs souhaitées
-                  </label>
-                  <input
-                    id="wantedColors"
-                    type="text"
-                    className="text-input"
-                    placeholder="Ex: Bleu, blanc, gris"
-                    onChange={handleFormChange}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="field-label" htmlFor="avoidColors">
-                    Couleurs à éviter
-                  </label>
-                  <input
-                    id="avoidColors"
-                    type="text"
-                    className="text-input"
-                    placeholder="Ex: Rouge, orange"
-                    onChange={handleFormChange}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="field-label" htmlFor="letters">
-                    Préférez-vous que les lettres du logo soient :
-                  </label>
-                  <select
-                    id="letters"
-                    className="select-input"
-                    defaultValue=""
-                    onChange={handleFormChange}
-                  >
-                    <option value="" disabled>
-                      -- Sélectionnez --
-                    </option>
-                    <option value="majuscules">En majuscules</option>
-                    <option value="minuscules">En minuscules</option>
-                    <option value="mixte">Majuscules &amp; minuscules</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label className="field-label" htmlFor="message">
-                    Message ou feeling à transmettre
-                  </label>
-                  <textarea
-                    id="message"
-                    className="textarea-input"
-                    placeholder="Décrivez le message ou le ressenti que vous souhaitez transmettre avec ce logo..."
-                    rows={4}
-                    onChange={handleFormChange}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="field-label" htmlFor="file">
-                    Fichier de référence (optionnel)
-                  </label>
-                  <p className="field-hint">
-                    Ajoutez une image ou un PDF pour illustrer vos attentes
-                  </p>
-
-                  <div
-                    className="file-input-wrapper"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => fileInputRef.current?.click()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        fileInputRef.current?.click();
-                      }
-                    }}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      id="file"
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="file-input-hidden"
-                      onChange={handleFormChange}
+                <div className="logo-stepper" role="progressbar" aria-valuenow={logoStep + 1} aria-valuemin={1} aria-valuemax={4} aria-label="Étapes du formulaire logo">
+                  <div className="logo-stepper-track">
+                    <div
+                      className="logo-stepper-line-fill"
+                      style={{ width: `${(logoStep / 3) * 100}%` }}
+                      aria-hidden
                     />
-                    <span className="file-button">Choisir un fichier</span>
-                    <span className="file-name">
-                      {referenceFileLabel || 'Aucun fichier choisi'}
-                    </span>
+                    {[
+                      { id: 0, label: "À propos logo" },
+                      { id: 1, label: "Naissance d'idée" },
+                      { id: 2, label: "Client cible" },
+                      { id: 3, label: "Exemplaire" },
+                    ].map((step) => (
+                      <button
+                        key={step.id}
+                        type="button"
+                        className={`logo-stepper-step ${logoStep >= step.id ? 'logo-stepper-step-active' : ''}`}
+                        onClick={() => setLogoStep(step.id)}
+                        aria-current={logoStep === step.id ? 'step' : undefined}
+                      >
+                        <span className="logo-stepper-dot" />
+                        <span className="logo-stepper-label">{step.label}</span>
+                      </button>
+                    ))}
                   </div>
+                </div>
+
+                {logoStep === 0 && (
+                  <>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="sector">
+                        Secteur d&apos;activité
+                      </label>
+                      <select
+                        id="sector"
+                        className="select-input"
+                        defaultValue=""
+                        onChange={handleFormChange}
+                      >
+                        <option value="" disabled>-- Sélectionnez --</option>
+                        <option value="tech">Technologie</option>
+                        <option value="sante">Santé</option>
+                        <option value="education">Éducation</option>
+                        <option value="autre">Autre</option>
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="style">
+                        Style de logo préféré
+                      </label>
+                      <select
+                        id="style"
+                        className="select-input"
+                        defaultValue=""
+                        onChange={handleFormChange}
+                      >
+                        <option value="" disabled>-- Sélectionnez --</option>
+                        <option value="minimaliste">Minimaliste</option>
+                        <option value="moderne">Moderne</option>
+                        <option value="classique">Classique</option>
+                        <option value="illustratif">Illustratif</option>
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="wantedColors">
+                        Couleurs souhaitées
+                      </label>
+                      <input
+                        id="wantedColors"
+                        type="text"
+                        className="text-input"
+                        placeholder="Ex: Bleu, blanc, gris"
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="avoidColors">
+                        Couleurs à éviter
+                      </label>
+                      <input
+                        id="avoidColors"
+                        type="text"
+                        className="text-input"
+                        placeholder="Ex: Rouge, orange"
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="letters">
+                        Préférez-vous que les lettres du logo soient :
+                      </label>
+                      <select
+                        id="letters"
+                        className="select-input"
+                        defaultValue=""
+                        onChange={handleFormChange}
+                      >
+                        <option value="" disabled>-- Sélectionnez --</option>
+                        <option value="majuscules">En majuscules</option>
+                        <option value="minuscules">En minuscules</option>
+                        <option value="mixte">Majuscules &amp; minuscules</option>
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="message">
+                        Message ou feeling à transmettre
+                      </label>
+                      <textarea
+                        id="message"
+                        className="textarea-input"
+                        placeholder="Décrivez le message ou le ressenti que vous souhaitez transmettre avec ce logo..."
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {logoStep === 1 && (
+                  <div className="logo-step-content">
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="birth">
+                        Comment est née votre entreprise ?
+                      </label>
+                      <textarea
+                        id="birth"
+                        className="textarea-input logo-step-textarea"
+                        placeholder=""
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="anecdote">
+                        Y a-t-il une anecdote ou un moment fondateur qui vous définit ?
+                      </label>
+                      <textarea
+                        id="anecdote"
+                        className="textarea-input logo-step-textarea"
+                        placeholder=""
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="person">
+                        Si votre marque était une personne, comment la décririez-vous ?
+                      </label>
+                      <textarea
+                        id="person"
+                        className="textarea-input logo-step-textarea"
+                        placeholder=""
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="images">
+                        Quels mots ou images viennent à l&apos;esprit quand vous pensez à votre marque idéale ?
+                      </label>
+                      <textarea
+                        id="images"
+                        className="textarea-input logo-step-textarea"
+                        placeholder=""
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="summary">
+                        Comment décririez-vous votre entreprise en quelques mots ?
+                      </label>
+                      <textarea
+                        id="summary"
+                        className="textarea-input logo-step-textarea"
+                        placeholder=""
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {logoStep === 2 && (
+                  <>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="idealClients">
+                        Qui sont vos clients idéaux ?
+                      </label>
+                      <textarea
+                        id="idealClients"
+                        className="textarea-input logo-step-textarea"
+                        placeholder="Décrivez votre cible idéale..."
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="problems">
+                        Quels problèmes ou besoins votre entreprise résout-elle ?
+                      </label>
+                      <textarea
+                        id="problems"
+                        className="textarea-input logo-step-textarea"
+                        placeholder=""
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="field-label" htmlFor="difference">
+                        Qu&apos;est-ce qui vous distingue de la concurrence ?
+                      </label>
+                      <textarea
+                        id="difference"
+                        className="textarea-input logo-step-textarea"
+                        placeholder=""
+                        rows={4}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {logoStep === 3 && (
+                  <div className="logo-step-exemplaire">
+                    <h3 className="logo-step-exemplaire-title">
+                      Importez des modèles de design que vous aimez
+                    </h3>
+                    <div
+                      className="logo-step-upload-zone"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => fileInputRef.current?.click()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        id="file"
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="file-input-hidden"
+                        onChange={handleFormChange}
+                      />
+                      <span className="logo-step-upload-icon" aria-hidden>
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                          <path d="M3 16l5-5 4 4 6-6 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M14 8h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      </span>
+                      <span className="logo-step-upload-text">
+                        {referenceFileLabel || 'Importez des images'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="logo-stepper-actions">
+                  {logoStep < 3 ? (
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => setLogoStep((s) => Math.min(3, s + 1))}
+                    >
+                      Suivant
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={submitting}
+                      onClick={handleSubmit}
+                    >
+                      {submitting ? 'Envoi en cours…' : 'Envoyer le formulaire'}
+                    </button>
+                  )}
                 </div>
               </section>
             )}
@@ -527,16 +718,16 @@ export const App: React.FC = () => {
               </section>
             )}
 
-            {service === 'mobile' && (
+            {service === 'visuel' && (
               <section className="form-section">
-                <p className="form-section-kicker">Section Application Mobile</p>
+                <p className="form-section-kicker">Section Visuel</p>
 
                 <div className="form-field">
-                  <label className="field-label" htmlFor="mobileType">
-                    Type d&apos;application mobile
+                  <label className="field-label" htmlFor="visualType">
+                    Type de visuel
                   </label>
                   <select
-                    id="mobileType"
+                    id="visualType"
                     className="select-input"
                     defaultValue=""
                     onChange={handleFormChange}
@@ -544,66 +735,21 @@ export const App: React.FC = () => {
                     <option value="" disabled>
                       -- Sélectionnez --
                     </option>
-                    <option value="reseau_social">Réseau social</option>
-                    <option value="ecommerce">E-commerce</option>
-                    <option value="productivite">Productivité</option>
-                    <option value="jeu">Jeu</option>
-                    <option value="sante">Santé et fitness</option>
-                    <option value="education">Éducation</option>
-                    <option value="divertissement">Divertissement</option>
+                    <option value="affiche">Affiche</option>
+                    <option value="couverture">Couverture</option>
+                    <option value="reseau_social">Réseaux sociaux</option>
+                    <option value="packaging">Packaging</option>
+                    <option value="illustration">Illustration</option>
                     <option value="autre">Autre</option>
                   </select>
                 </div>
 
                 <div className="form-field">
-                  <span className="field-label">Plateformes cibles</span>
-                  <div className="checkbox-group">
-                    <label className="checkbox-item">
-                      <input
-                        id="mobilePlatformIos"
-                        type="checkbox"
-                        onChange={handleFormChange}
-                      />
-                      <span>iOS (iPhone, iPad)</span>
-                    </label>
-                    <label className="checkbox-item">
-                      <input
-                        id="mobilePlatformAndroid"
-                        type="checkbox"
-                        onChange={handleFormChange}
-                      />
-                      <span>Android</span>
-                    </label>
-                    <label className="checkbox-item">
-                      <input
-                        id="mobilePlatformCross"
-                        type="checkbox"
-                        onChange={handleFormChange}
-                      />
-                      <span>Cross-platform (React Native, Flutter)</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="form-field">
-                  <label className="field-label" htmlFor="mobileFeatures">
-                    Fonctionnalités principales souhaitées
-                  </label>
-                  <textarea
-                    id="mobileFeatures"
-                    className="textarea-input"
-                    rows={4}
-                    placeholder="Ex: Notifications push, géolocalisation, appareil photo, paiement intégré..."
-                    onChange={handleFormChange}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="field-label" htmlFor="mobileStyle">
-                    Style de design préféré
+                  <label className="field-label" htmlFor="visualSector">
+                    Secteur d&apos;activité
                   </label>
                   <select
-                    id="mobileStyle"
+                    id="visualSector"
                     className="select-input"
                     defaultValue=""
                     onChange={handleFormChange}
@@ -611,25 +757,73 @@ export const App: React.FC = () => {
                     <option value="" disabled>
                       -- Sélectionnez --
                     </option>
-                    <option value="material">Material Design (Android)</option>
-                    <option value="ios">iOS Human Interface</option>
-                    <option value="personnalise">Personnalisé</option>
-                    <option value="minimaliste">Minimaliste</option>
-                    <option value="colore">Coloré et dynamique</option>
+                    <option value="mode">Mode</option>
+                    <option value="gastronomie">Gastronomie</option>
+                    <option value="culture">Culture</option>
+                    <option value="tech">Tech</option>
+                    <option value="sante">Santé</option>
+                    <option value="autre">Autre</option>
                   </select>
                 </div>
 
                 <div className="form-field">
-                  <label className="field-label" htmlFor="mobileNotes">
-                    Informations complémentaires
+                  <label className="field-label" htmlFor="visualBrand">
+                    Nom de l&apos;entreprise / marque
                   </label>
-                  <textarea
-                    id="mobileNotes"
-                    className="textarea-input"
-                    rows={4}
-                    placeholder="Décrivez vos besoins spécifiques, inspirations, ou toute autre information utile..."
+                  <input
+                    id="visualBrand"
+                    type="text"
+                    className="text-input"
+                    placeholder="Ex: Votre marque ou entreprise"
                     onChange={handleFormChange}
                   />
+                </div>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="visualGoal">
+                    Quel est l&apos;objectif principal du visuel ?
+                  </label>
+                  <input
+                    id="visualGoal"
+                    type="text"
+                    className="text-input"
+                    placeholder="Ex: Mise en avant produit, couverture réseaux sociaux..."
+                    onChange={handleFormChange}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="exemplaire">
+                    Importez des modèles de design que vous aimez
+                  </label>
+                  <p className="field-hint">
+                    Importez des images pour illustrer vos attentes
+                  </p>
+                  <div
+                    className="file-input-wrapper"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => exemplaireFileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        exemplaireFileInputRef.current?.click();
+                      }
+                    }}
+                  >
+                    <input
+                      ref={exemplaireFileInputRef}
+                      id="exemplaire"
+                      type="file"
+                      accept="image/*"
+                      className="file-input-hidden"
+                      onChange={handleFormChange}
+                    />
+                    <span className="file-button">Importez des images</span>
+                    <span className="file-name">
+                      {exemplaireFileLabel || 'Aucune image choisie'}
+                    </span>
+                  </div>
                 </div>
               </section>
             )}
@@ -643,14 +837,16 @@ export const App: React.FC = () => {
           {submitError && (
             <p className="form-message form-message-error">{submitError}</p>
           )}
-          <button
-            type="button"
-            className="primary-button"
-            disabled={submitting}
-            onClick={handleSubmit}
-          >
-            {submitting ? 'Envoi en cours…' : 'Envoyer le formulaire'}
-          </button>
+          {!(service === 'logo') && (
+            <button
+              type="button"
+              className="primary-button"
+              disabled={submitting}
+              onClick={handleSubmit}
+            >
+              {submitting ? 'Envoi en cours…' : 'Envoyer le formulaire'}
+            </button>
+          )}
         </section>
       </div>
     </div>
