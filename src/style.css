@@ -20,6 +20,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 #app {
@@ -102,6 +103,149 @@ body {
 @media (max-width: 960px) {
   .site-header-inner {
     padding: 14px 24px;
+  }
+}
+
+/* Téléphone / petit écran */
+@media (max-width: 600px) {
+  .site-header-inner {
+    padding: 12px 16px;
+  }
+
+  .site-header-logo {
+    font-size: 1.1rem;
+  }
+
+  .site-header-logo-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .page-content {
+    padding: 20px 16px;
+    gap: 32px;
+  }
+
+  .hero {
+    gap: 24px;
+  }
+
+  .hero-header {
+    max-width: 100%;
+  }
+
+  .hero-kicker {
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+  }
+
+  .hero-title {
+    font-size: 1.85rem;
+    margin-bottom: 10px;
+  }
+
+  .hero-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .hero-partner {
+    max-width: 100%;
+  }
+
+  .hero-cta {
+    width: 100%;
+    text-align: center;
+    padding: 14px 20px;
+    font-size: 0.95rem;
+  }
+
+  .form-card {
+    padding: 20px 16px;
+    border-radius: 12px;
+  }
+
+  .form-section {
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+  }
+
+  .form-section-kicker {
+    font-size: 1rem;
+    margin-bottom: 14px;
+  }
+
+  .form-section-title {
+    font-size: 1.05rem;
+    margin-bottom: 14px;
+  }
+
+  .form-field {
+    margin-bottom: 14px;
+  }
+
+  .field-label {
+    font-size: 0.9rem;
+  }
+
+  .text-input,
+  .select-input,
+  .textarea-input {
+    padding: 12px 14px;
+    font-size: 16px; /* évite le zoom auto sur iOS */
+  }
+
+  .textarea-input {
+    min-height: 100px;
+  }
+
+  .service-tabs {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .service-tab {
+    padding: 14px 12px;
+    font-size: 0.9rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .primary-button {
+    padding: 16px 20px;
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .file-input-wrapper {
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+
+  .checkbox-item {
+    min-height: 44px;
+    padding: 4px 0;
+  }
+
+  .checkbox-item input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-content {
+    padding: 16px 12px;
+  }
+
+  .hero-title {
+    font-size: 1.6rem;
+  }
+
+  .form-card {
+    padding: 16px 12px;
   }
 }
 
@@ -358,6 +502,26 @@ body {
 .textarea-input {
   resize: vertical;
   min-height: 120px;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #e5e7eb;
+}
+
+.checkbox-item input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ff0671;
 }
 
 .service-tabs {

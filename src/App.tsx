@@ -8,14 +8,10 @@ const partenaireImg =
 // En développement : http://localhost:3001 (via `npm run server` ou `npm run start`)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-type Service = 'logo' | 'webapp' | 'visuals';
-type LogoStep = 1 | 2 | 3 | 4;
+type Service = 'logo' | 'webapp' | 'mobile';
 
 export const App: React.FC = () => {
   const [service, setService] = useState<Service>('logo');
-  const [logoStep, setLogoStep] = useState<LogoStep>(1);
-  const [exemplaireFiles, setExemplaireFiles] = useState<File[]>([]);
-  const exemplaireInputRef = useRef<HTMLInputElement>(null);
   const formDataRef = useRef<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -33,6 +29,8 @@ export const App: React.FC = () => {
             .map((f) => f.name)
             .join(', ')
         : '';
+    } else if (t.type === 'checkbox' && t instanceof HTMLInputElement) {
+      formDataRef.current[t.id] = t.checked ? 'true' : 'false';
     } else {
       formDataRef.current[t.id] = t.value;
     }
@@ -44,7 +42,6 @@ export const App: React.FC = () => {
     try {
       const payload = {
         ...formDataRef.current,
-        exemplaireFileNames: exemplaireFiles.map((f) => f.name),
       };
       const res = await fetch(`${API_URL}/api/submit`, {
         method: 'POST',
@@ -110,9 +107,9 @@ export const App: React.FC = () => {
       <div className="page-content">
         <section className="hero">
           <header className="hero-header">
-            <p className="hero-kicker">Questionnaire</p>
+            <p className="hero-kicker">Formulaire</p>
             <h1 className="hero-title">
-              Questionnaire <span>Complet</span>
+              Formulaire <span>Complet</span>
             </h1>
             <p className="hero-subtitle">
               Créez votre identité visuelle et vos applications
@@ -133,7 +130,7 @@ export const App: React.FC = () => {
           </a>
         </section>
 
-        <section className="form-card" aria-label="Questionnaire de brief">
+        <section className="form-card" aria-label="Formulaire de brief">
           <div className="form-card-backdrop" aria-hidden>
             <img
               src="/Logo viviworks.ai (1).png"
@@ -221,416 +218,338 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={service === 'visuals'}
+                  aria-selected={service === 'mobile'}
                   className={
-                    service === 'visuals'
+                    service === 'mobile'
                       ? 'service-tab service-tab-active'
                       : 'service-tab'
                   }
-                  onClick={() => setService('visuals')}
+                  onClick={() => setService('mobile')}
                 >
-                  Visuels
+                  Application Mobile
                 </button>
               </div>
             </section>
 
-            <section className="form-section">
-              <p className="form-section-kicker">Section Logo</p>
+            {service === 'logo' && (
+              <section className="form-section">
+                <p className="form-section-kicker">Section Logo</p>
 
-              <div className="stepper" aria-label="Étapes du questionnaire">
-                <div className="stepper-track">
-                  <div
-                    className="stepper-track-active"
-                    style={{ width: `${(logoStep / 4) * 100}%` }}
+                <div className="form-field">
+                  <label className="field-label" htmlFor="sector">
+                    Secteur d&apos;activité
+                  </label>
+                  <select
+                    id="sector"
+                    className="select-input"
+                    defaultValue=""
+                    onChange={handleFormChange}
+                  >
+                    <option value="" disabled>
+                      -- Sélectionnez --
+                    </option>
+                    <option value="tech">Technologie</option>
+                    <option value="sante">Santé</option>
+                    <option value="education">Éducation</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="style">
+                    Style de logo préféré
+                  </label>
+                  <select
+                    id="style"
+                    className="select-input"
+                    defaultValue=""
+                    onChange={handleFormChange}
+                  >
+                    <option value="" disabled>
+                      -- Sélectionnez --
+                    </option>
+                    <option value="minimaliste">Minimaliste</option>
+                    <option value="moderne">Moderne</option>
+                    <option value="classique">Classique</option>
+                    <option value="illustratif">Illustratif</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="wantedColors">
+                    Couleurs souhaitées
+                  </label>
+                  <input
+                    id="wantedColors"
+                    type="text"
+                    className="text-input"
+                    placeholder="Ex: Bleu, blanc, gris"
+                    onChange={handleFormChange}
                   />
                 </div>
-                <div className="stepper-steps">
-                  <button
-                    type="button"
-                    className={
-                      logoStep >= 1
-                        ? 'stepper-step stepper-step-active'
-                        : 'stepper-step'
-                    }
-                    onClick={() => setLogoStep(1)}
-                  >
-                    <span className="stepper-dot" />
-                    <span className="stepper-label">À propos logo</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      logoStep >= 2
-                        ? 'stepper-step stepper-step-active'
-                        : 'stepper-step'
-                    }
-                    onClick={() => setLogoStep(2)}
-                  >
-                    <span className="stepper-dot" />
-                    <span className="stepper-label">Naissance d’idée</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      logoStep >= 3
-                        ? 'stepper-step stepper-step-active'
-                        : 'stepper-step'
-                    }
-                    onClick={() => setLogoStep(3)}
-                  >
-                    <span className="stepper-dot" />
-                    <span className="stepper-label">Client cible</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      logoStep >= 4
-                        ? 'stepper-step stepper-step-active'
-                        : 'stepper-step'
-                    }
-                    onClick={() => setLogoStep(4)}
-                  >
-                    <span className="stepper-dot" />
-                    <span className="stepper-label">Exemplaire</span>
-                  </button>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="avoidColors">
+                    Couleurs à éviter
+                  </label>
+                  <input
+                    id="avoidColors"
+                    type="text"
+                    className="text-input"
+                    placeholder="Ex: Rouge, orange"
+                    onChange={handleFormChange}
+                  />
                 </div>
-              </div>
 
-              {logoStep === 1 && (
-                <>
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="sector">
-                      Secteur d&apos;activité
-                    </label>
-                    <select
-                      id="sector"
-                      className="select-input"
-                      defaultValue=""
-                      onChange={handleFormChange}
-                    >
-                      <option value="" disabled>
-                        -- Sélectionnez --
-                      </option>
-                      <option value="tech">Technologie</option>
-                      <option value="sante">Santé</option>
-                      <option value="education">Éducation</option>
-                      <option value="autre">Autre</option>
-                    </select>
-                  </div>
+                <div className="form-field">
+                  <label className="field-label" htmlFor="letters">
+                    Préférez-vous que les lettres du logo soient :
+                  </label>
+                  <select
+                    id="letters"
+                    className="select-input"
+                    defaultValue=""
+                    onChange={handleFormChange}
+                  >
+                    <option value="" disabled>
+                      -- Sélectionnez --
+                    </option>
+                    <option value="majuscules">En majuscules</option>
+                    <option value="minuscules">En minuscules</option>
+                    <option value="mixte">Majuscules &amp; minuscules</option>
+                  </select>
+                </div>
 
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="style">
-                      Style de logo préféré
-                    </label>
-                    <select
-                      id="style"
-                      className="select-input"
-                      defaultValue=""
-                      onChange={handleFormChange}
-                    >
-                      <option value="" disabled>
-                        -- Sélectionnez --
-                      </option>
-                      <option value="minimaliste">Minimaliste</option>
-                      <option value="moderne">Moderne</option>
-                      <option value="classique">Classique</option>
-                      <option value="illustratif">Illustratif</option>
-                    </select>
-                  </div>
+                <div className="form-field">
+                  <label className="field-label" htmlFor="message">
+                    Message ou feeling à transmettre
+                  </label>
+                  <textarea
+                    id="message"
+                    className="textarea-input"
+                    placeholder="Décrivez le message ou le ressenti que vous souhaitez transmettre avec ce logo..."
+                    rows={4}
+                    onChange={handleFormChange}
+                  />
+                </div>
 
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="wantedColors">
-                      Couleurs souhaitées
-                    </label>
+                <div className="form-field">
+                  <label className="field-label" htmlFor="file">
+                    Fichier de référence (optionnel)
+                  </label>
+                  <p className="field-hint">
+                    Ajoutez une image ou un PDF pour illustrer vos attentes
+                  </p>
+
+                  <label className="file-input-wrapper">
                     <input
-                      id="wantedColors"
-                      type="text"
-                      className="text-input"
-                      placeholder="Ex: Bleu, blanc, gris"
+                      id="file"
+                      type="file"
+                      className="file-input-hidden"
                       onChange={handleFormChange}
                     />
-                  </div>
+                    <span className="file-button">Choose File</span>
+                    <span className="file-name">No file chosen</span>
+                  </label>
+                </div>
+              </section>
+            )}
 
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="avoidColors">
-                      Couleurs à éviter
-                    </label>
-                    <input
-                      id="avoidColors"
-                      type="text"
-                      className="text-input"
-                      placeholder="Ex: Rouge, orange"
-                      onChange={handleFormChange}
-                    />
-                  </div>
+            {service === 'webapp' && (
+              <section className="form-section">
+                <p className="form-section-kicker">Section Application Web</p>
 
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="letters">
-                      Préférez-vous que les lettres du logo soient :
-                    </label>
-                    <select
-                      id="letters"
-                      className="select-input"
-                      defaultValue=""
-                      onChange={handleFormChange}
-                    >
-                      <option value="" disabled>
-                        -- Sélectionnez --
-                      </option>
-                      <option value="majuscules">En majuscules</option>
-                      <option value="minuscules">En minuscules</option>
-                      <option value="mixte">
-                        Majuscules &amp; minuscules
-                      </option>
-                    </select>
-                  </div>
+                <div className="form-field">
+                  <label className="field-label" htmlFor="webType">
+                    Type d&apos;application web
+                  </label>
+                  <select
+                    id="webType"
+                    className="select-input"
+                    defaultValue=""
+                    onChange={handleFormChange}
+                  >
+                    <option value="" disabled>
+                      -- Sélectionnez --
+                    </option>
+                    <option value="vitrine">Site vitrine</option>
+                    <option value="ecommerce">E-commerce</option>
+                    <option value="saas">Application SaaS</option>
+                    <option value="plateforme">Plateforme communautaire</option>
+                    <option value="portfolio">Portfolio</option>
+                    <option value="blog">Blog</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
 
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="message">
-                      Message ou feeling à transmettre
-                    </label>
-                    <textarea
-                      id="message"
-                      className="textarea-input"
-                      placeholder="Décrivez le message ou le ressenti que vous souhaitez transmettre avec ce logo..."
-                      rows={4}
-                      onChange={handleFormChange}
-                    />
-                  </div>
+                <div className="form-field">
+                  <label className="field-label" htmlFor="webFeatures">
+                    Fonctionnalités principales souhaitées
+                  </label>
+                  <textarea
+                    id="webFeatures"
+                    className="textarea-input"
+                    rows={4}
+                    placeholder="Ex: Authentification, paiement en ligne, chat en temps réel, tableau de bord..."
+                    onChange={handleFormChange}
+                  />
+                </div>
 
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="file">
-                      Fichier de référence (optionnel)
-                    </label>
-                    <p className="field-hint">
-                      Ajoutez une image ou un PDF pour illustrer vos attentes
-                    </p>
+                <div className="form-field">
+                  <label className="field-label" htmlFor="webStyle">
+                    Style de design préféré
+                  </label>
+                  <select
+                    id="webStyle"
+                    className="select-input"
+                    defaultValue=""
+                    onChange={handleFormChange}
+                  >
+                    <option value="" disabled>
+                      -- Sélectionnez --
+                    </option>
+                    <option value="minimaliste">Minimaliste</option>
+                    <option value="moderne">Moderne</option>
+                    <option value="classique">Classique</option>
+                    <option value="sombre">Sombre</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
 
-                    <label className="file-input-wrapper">
+                <div className="form-field">
+                  <label className="field-label" htmlFor="webTech">
+                    Technologies ou frameworks préférés (optionnel)
+                  </label>
+                  <input
+                    id="webTech"
+                    type="text"
+                    className="text-input"
+                    placeholder="Ex: React, Vue, Next.js, WordPress..."
+                    onChange={handleFormChange}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="webNotes">
+                    Informations complémentaires
+                  </label>
+                  <textarea
+                    id="webNotes"
+                    className="textarea-input"
+                    rows={4}
+                    placeholder="Décrivez vos besoins spécifiques, inspirations, ou toute autre information utile..."
+                    onChange={handleFormChange}
+                  />
+                </div>
+              </section>
+            )}
+
+            {service === 'mobile' && (
+              <section className="form-section">
+                <p className="form-section-kicker">Section Application Mobile</p>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="mobileType">
+                    Type d&apos;application mobile
+                  </label>
+                  <select
+                    id="mobileType"
+                    className="select-input"
+                    defaultValue=""
+                    onChange={handleFormChange}
+                  >
+                    <option value="" disabled>
+                      -- Sélectionnez --
+                    </option>
+                    <option value="reseau_social">Réseau social</option>
+                    <option value="ecommerce">E-commerce</option>
+                    <option value="productivite">Productivité</option>
+                    <option value="jeu">Jeu</option>
+                    <option value="sante">Santé et fitness</option>
+                    <option value="education">Éducation</option>
+                    <option value="divertissement">Divertissement</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <span className="field-label">Plateformes cibles</span>
+                  <div className="checkbox-group">
+                    <label className="checkbox-item">
                       <input
-                        id="file"
-                        type="file"
-                        className="file-input-hidden"
+                        id="mobilePlatformIos"
+                        type="checkbox"
                         onChange={handleFormChange}
                       />
-                      <span className="file-button">Choose File</span>
-                      <span className="file-name">No file chosen</span>
+                      <span>iOS (iPhone, iPad)</span>
                     </label>
-                  </div>
-                </>
-              )}
-
-              {logoStep === 2 && (
-                <>
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="birth">
-                      Comment est née votre entreprise ?
-                    </label>
-                    <textarea
-                      id="birth"
-                      className="textarea-input"
-                      rows={3}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="anecdote">
-                      Y a-t-il une anecdote ou un moment fondateur qui vous
-                      définit ?
-                    </label>
-                    <textarea
-                      id="anecdote"
-                      className="textarea-input"
-                      rows={3}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="person">
-                      Si votre marque était une personne, comment la
-                      décririez-vous ?
-                    </label>
-                    <textarea
-                      id="person"
-                      className="textarea-input"
-                      rows={3}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="images">
-                      Quels mots ou images viennent à l’esprit quand vous
-                      pensez à votre marque idéale ?
-                    </label>
-                    <textarea
-                      id="images"
-                      className="textarea-input"
-                      rows={3}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="summary">
-                      Comment décririez-vous votre entreprise en quelques mots
-                      ?
-                    </label>
-                    <textarea
-                      id="summary"
-                      className="textarea-input"
-                      rows={3}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-                </>
-              )}
-
-              {logoStep === 3 && (
-                <>
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="idealClients">
-                      Qui sont vos clients idéaux ?
-                    </label>
-                    <textarea
-                      id="idealClients"
-                      className="textarea-input"
-                      rows={3}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="problems">
-                      Quels problèmes ou besoins résolvez-vous pour eux ?
-                    </label>
-                    <textarea
-                      id="problems"
-                      className="textarea-input"
-                      rows={3}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="difference">
-                      Qu’est-ce qui vous distingue de vos concurrents ?
-                    </label>
-                    <textarea
-                      id="difference"
-                      className="textarea-input"
-                      rows={3}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-                </>
-              )}
-
-              {logoStep === 4 && (
-                <>
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="visualType">
-                      Type de visuel
-                    </label>
-                    <select
-                      id="visualType"
-                      className="select-input"
-                      defaultValue=""
-                      onChange={handleFormChange}
-                    >
-                      <option value="" disabled>
-                        -- Sélectionnez --
-                      </option>
-                      <option value="post">Post réseaux sociaux</option>
-                      <option value="affiche">Affiche / Flyer</option>
-                      <option value="banniere">Bannière web</option>
-                    </select>
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="visualSector">
-                      Secteur d&apos;activité
-                    </label>
-                    <select
-                      id="visualSector"
-                      className="select-input"
-                      defaultValue=""
-                      onChange={handleFormChange}
-                    >
-                      <option value="" disabled>
-                        -- Sélectionnez --
-                      </option>
-                      <option value="tech">Technologie</option>
-                      <option value="sante">Santé</option>
-                      <option value="education">Éducation</option>
-                      <option value="autre">Autre</option>
-                    </select>
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="visualBrand">
-                      Nom de l&apos;entreprise / marque
-                    </label>
-                    <input
-                      id="visualBrand"
-                      type="text"
-                      className="text-input"
-                      placeholder="Ex: Bleu, blanc, gris"
-                      onChange={handleFormChange}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="visualGoal">
-                      Quel est l&apos;objectif principal du visuel ?
-                    </label>
-                    <input
-                      id="visualGoal"
-                      type="text"
-                      className="text-input"
-                      placeholder="Ex: Rouge, orange"
-                      onChange={handleFormChange}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label className="field-label" htmlFor="visualUploads">
-                      Importez des modele de design que vous aimez
-                    </label>
-                    <div className="upload-area-wrapper">
+                    <label className="checkbox-item">
                       <input
-                        ref={exemplaireInputRef}
-                        id="visualUploads"
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="upload-area-input-hidden"
-                        onChange={(e) => {
-                          const files = e.target.files;
-                          if (files?.length) {
-                            setExemplaireFiles(Array.from(files));
-                          }
-                        }}
+                        id="mobilePlatformAndroid"
+                        type="checkbox"
+                        onChange={handleFormChange}
                       />
-                      <button
-                        type="button"
-                        className="upload-area"
-                        onClick={() => exemplaireInputRef.current?.click()}
-                      >
-                        <div className="upload-placeholder-icon" />
-                        <p className="upload-placeholder-text">
-                          {exemplaireFiles.length > 0
-                            ? `${exemplaireFiles.length} image(s) sélectionnée(s)`
-                            : 'Cliquez ou déposez des images ici'}
-                        </p>
-                      </button>
-                    </div>
+                      <span>Android</span>
+                    </label>
+                    <label className="checkbox-item">
+                      <input
+                        id="mobilePlatformCross"
+                        type="checkbox"
+                        onChange={handleFormChange}
+                      />
+                      <span>Cross-platform (React Native, Flutter)</span>
+                    </label>
                   </div>
-                </>
-              )}
-            </section>
+                </div>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="mobileFeatures">
+                    Fonctionnalités principales souhaitées
+                  </label>
+                  <textarea
+                    id="mobileFeatures"
+                    className="textarea-input"
+                    rows={4}
+                    placeholder="Ex: Notifications push, géolocalisation, appareil photo, paiement intégré..."
+                    onChange={handleFormChange}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="mobileStyle">
+                    Style de design préféré
+                  </label>
+                  <select
+                    id="mobileStyle"
+                    className="select-input"
+                    defaultValue=""
+                    onChange={handleFormChange}
+                  >
+                    <option value="" disabled>
+                      -- Sélectionnez --
+                    </option>
+                    <option value="material">Material Design (Android)</option>
+                    <option value="ios">iOS Human Interface</option>
+                    <option value="personnalise">Personnalisé</option>
+                    <option value="minimaliste">Minimaliste</option>
+                    <option value="colore">Coloré et dynamique</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label className="field-label" htmlFor="mobileNotes">
+                    Informations complémentaires
+                  </label>
+                  <textarea
+                    id="mobileNotes"
+                    className="textarea-input"
+                    rows={4}
+                    placeholder="Décrivez vos besoins spécifiques, inspirations, ou toute autre information utile..."
+                    onChange={handleFormChange}
+                  />
+                </div>
+              </section>
+            )}
           </div>
 
           {submitSuccess && (
@@ -645,17 +564,9 @@ export const App: React.FC = () => {
             type="button"
             className="primary-button"
             disabled={submitting}
-            onClick={() =>
-              logoStep < 4
-                ? setLogoStep((current) => (current + 1) as LogoStep)
-                : handleSubmit()
-            }
+            onClick={handleSubmit}
           >
-            {submitting
-              ? 'Envoi en cours…'
-              : logoStep < 4
-                ? 'Suivant'
-                : 'Terminé'}
+            {submitting ? 'Envoi en cours…' : 'Envoyer le formulaire'}
           </button>
         </section>
       </div>

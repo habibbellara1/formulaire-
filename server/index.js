@@ -34,7 +34,7 @@ function buildEmailHtml(data) {
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family:sans-serif;">
-  <h2>Nouveau questionnaire (Section Logo)</h2>
+  <h2>Nouveau formulaire (Section Logo)</h2>
   <table style="border-collapse:collapse;width:100%;max-width:600px;">
     ${rows}
   </table>
@@ -103,7 +103,7 @@ app.post('/api/submit', async (req, res) => {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
       to: toEmail,
-      subject: `Questionnaire Complet – ${email}`,
+      subject: `Formulaire Complet – ${email}`,
       html: buildEmailHtml(dataForEmail),
       text: Object.entries(dataForEmail).map(([k, v]) => `${k}: ${v}`).join('\n'),
     });
