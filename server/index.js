@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import multer from 'multer';
 import nodemailer from 'nodemailer';
 
 const app = express();
@@ -9,11 +10,10 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
 app.use(express.json({ limit: '512kb' }));
 
-function getValue(el) {
-  if (!el) return '';
-  if (el.type === 'file') return el.files?.length ? Array.from(el.files).map(f => f.name).join(', ') : '';
-  return (el.value || '').trim();
-}
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo par fichier
+}).array('files', 10);
 
 function escapeHtml(s) {
   if (typeof s !== 'string') return '';
@@ -27,24 +27,59 @@ function escapeHtml(s) {
 function buildEmailHtml(data) {
   const rows = Object.entries(data)
     .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '')
-    .map(([k, v]) => `<tr><td style="padding:8px;border:1px solid #ddd;"><strong>${escapeHtml(k)}</strong></td><td style="padding:8px;border:1px solid #ddd;">${escapeHtml(String(v))}</td></tr>`)
+    .map(
+      ([k, v]) =>
+        `<tr>
+          <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:14px;width:40%;">${escapeHtml(k)}</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;color:#111827;font-size:14px;">${escapeHtml(String(v))}</td>
+        </tr>`
+    )
     .join('');
   return `
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family:sans-serif;">
-  <h2>Nouveau formulaire (Section Logo)</h2>
-  <table style="border-collapse:collapse;width:100%;max-width:600px;">
-    ${rows}
-  </table>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nouveau formulaire</title>
+</head>
+<body style="margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:#f3f4f6;padding:24px;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -2px rgba(0,0,0,0.1);overflow:hidden;">
+    <div style="background:linear-gradient(90deg,#ff0671,#9333ea);padding:24px;text-align:center;">
+      <h1 style="margin:0;color:#fff;font-size:1.5rem;font-weight:700;">Nouveau formulaire</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:0.9rem;">Viviworks – Formulaire Complet</p>
+    </div>
+    <div style="padding:24px;">
+      <table style="border-collapse:collapse;width:100%;">
+        ${rows}
+      </table>
+      <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Cet email a été envoyé depuis le formulaire viviworks.ai</p>
+    </div>
+  </div>
 </body>
 </html>`;
 }
 
-app.post('/api/submit', async (req, res) => {
+app.post('/api/submit', (req, res, next) => {
+  const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data');
+  if (isMultipart) {
+    upload(req, res, (err) => {
+      if (err) return res.status(400).json({ success: false, message: 'Erreur upload fichier.' });
+      next();
+    });
+  } else {
+    next();
+  }
+}, async (req, res) => {
   try {
-    const body = req.body || {};
+    let body = req.body || {};
+    if (req.body && typeof req.body.data === 'string') {
+      try {
+        body = JSON.parse(req.body.data);
+      } catch {
+        body = req.body;
+      }
+    }
     const email = (body.email || '').trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ success: false, message: 'Adresse e-mail invalide.' });
@@ -74,15 +109,39 @@ app.post('/api/submit', async (req, res) => {
       visualBrand: "Nom entreprise / marque",
       visualGoal: "Objectif principal du visuel",
       exemplaireFileNames: 'Fichiers exemplaire (noms)',
+      webType: "Type d'application web",
+      webFeatures: 'Fonctionnalités principales souhaitées',
+      webStyle: 'Style de design préféré (web)',
+      webTech: 'Technologies ou frameworks préférés',
+      webNotes: 'Informations complémentaires (web)',
+      mobileType: "Type d'application mobile",
+      mobilePlatformIos: 'Plateforme iOS',
+      mobilePlatformAndroid: 'Plateforme Android',
+      mobilePlatformCross: 'Plateforme Cross-platform',
+      mobileFeatures: 'Fonctionnalités principales (mobile)',
+      mobileStyle: 'Style de design préféré (mobile)',
+      mobileNotes: 'Informations complémentaires (mobile)',
     };
 
     const dataForEmail = {};
     for (const [key, label] of Object.entries(labels)) {
-      const v = body[key];
+      let v = body[key];
+      if (v === 'true') v = 'Oui';
+      if (v === 'false') continue;
       if (v !== undefined && v !== null && String(v).trim() !== '') {
         dataForEmail[label] = Array.isArray(v) ? v.join(', ') : String(v);
       }
     }
+
+    const files = req.files || [];
+    if (files.length > 0) {
+      dataForEmail['Fichiers joints'] = files.map((f) => f.originalname).join(', ');
+    }
+
+    const attachments = files.map((f) => ({
+      filename: f.originalname,
+      content: f.buffer,
+    }));
 
     const toEmail = process.env.TO_EMAIL;
     if (!toEmail) {
@@ -106,6 +165,7 @@ app.post('/api/submit', async (req, res) => {
       subject: `Formulaire Complet – ${email}`,
       html: buildEmailHtml(dataForEmail),
       text: Object.entries(dataForEmail).map(([k, v]) => `${k}: ${v}`).join('\n'),
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
     res.json({ success: true, message: 'Merci. Votre formulaire a bien été envoyé.' });

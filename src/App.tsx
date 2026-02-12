@@ -13,6 +13,7 @@ type Service = 'logo' | 'webapp' | 'mobile';
 export const App: React.FC = () => {
   const [service, setService] = useState<Service>('logo');
   const formDataRef = useRef<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -43,11 +44,25 @@ export const App: React.FC = () => {
       const payload = {
         ...formDataRef.current,
       };
-      const res = await fetch(`${API_URL}/api/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const fileInput = fileInputRef.current;
+      const files = fileInput?.files ? Array.from(fileInput.files) : [];
+      const hasFiles = files.length > 0;
+
+      const res = hasFiles
+        ? await fetch(`${API_URL}/api/submit`, {
+            method: 'POST',
+            body: (() => {
+              const formData = new FormData();
+              formData.append('data', JSON.stringify(payload));
+              files.forEach((f) => formData.append('files', f));
+              return formData;
+            })(),
+          })
+        : await fetch(`${API_URL}/api/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
       const text = await res.text();
       let data: { message?: string } = {};
       try {
@@ -67,17 +82,19 @@ export const App: React.FC = () => {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Erreur lors de l’envoi.';
-      const needStart =
+      const isConnectionRefused =
         message.includes('Failed to fetch') ||
         message.includes('Connection refused') ||
-        message.includes('NetworkError') ||
-        message.includes('API non disponible') ||
-        message.includes('npm run start');
+        message.includes('ERR_CONNECTION_REFUSED') ||
+        message.includes('NetworkError');
       setSubmitError(
-        needStart
+        isConnectionRefused
           ? 'Serveur d’envoi injoignable. Lancez « npm run start » dans un terminal (pour démarrer le site + l’API), puis réessayez.'
           : message,
       );
+      if (isConnectionRefused && typeof window !== 'undefined' && !/localhost|127\.0\.0\.1/.test(window.location.hostname)) {
+        setSubmitError("Envoi impossible : déployez l'API (server/) sur Render ou Railway, puis définissez VITE_API_URL dans Netlify.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -343,8 +360,10 @@ export const App: React.FC = () => {
 
                   <label className="file-input-wrapper">
                     <input
+                      ref={fileInputRef}
                       id="file"
                       type="file"
+                      accept="image/*,.pdf"
                       className="file-input-hidden"
                       onChange={handleFormChange}
                     />
