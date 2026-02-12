@@ -14,6 +14,7 @@ export const App: React.FC = () => {
   const [service, setService] = useState<Service>('logo');
   const formDataRef = useRef<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [referenceFileLabel, setReferenceFileLabel] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -25,11 +26,12 @@ export const App: React.FC = () => {
   ) => {
     const t = e.target;
     if (t.type === 'file' && t instanceof HTMLInputElement) {
-      formDataRef.current[t.id] = t.files
-        ? Array.from(t.files)
-            .map((f) => f.name)
-            .join(', ')
-        : '';
+      const files = t.files ? Array.from(t.files) : [];
+      const names = files.map((f) => f.name).join(', ');
+      formDataRef.current[t.id] = names;
+      if (t.id === 'file') {
+        setReferenceFileLabel(files.length ? (files.length > 1 ? `${files.length} fichiers` : files[0].name) : '');
+      }
     } else if (t.type === 'checkbox' && t instanceof HTMLInputElement) {
       formDataRef.current[t.id] = t.checked ? 'true' : 'false';
     } else {
@@ -38,24 +40,60 @@ export const App: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    // Vérification immédiate : ne jamais envoyer sans email valide
+    const emailInput = document.getElementById('email') as HTMLInputElement | null;
+    const emailValue = (emailInput?.value ?? '').trim();
+    if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+      setSubmitError(
+        !emailValue
+          ? 'Veuillez renseigner votre adresse e-mail (champ en haut du formulaire).'
+          : 'Adresse e-mail invalide.',
+      );
+      emailInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      emailInput?.focus();
+      return;
+    }
+
     setSubmitError(null);
+
+    // Synchroniser les champs depuis le DOM (autocomplétion, etc.)
+    const emailEl = document.getElementById('email') as HTMLInputElement | null;
+    if (emailEl) formDataRef.current.email = emailEl.value;
+    const fullnameEl = document.getElementById('fullname') as HTMLInputElement | null;
+    if (fullnameEl) formDataRef.current.fullname = fullnameEl.value;
+    const companyEl = document.getElementById('company') as HTMLInputElement | null;
+    if (companyEl) formDataRef.current.company = companyEl.value;
 
     const email = (formDataRef.current?.email || '').trim();
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!emailValid) {
       setSubmitError(
         email.length === 0
-          ? 'Veuillez renseigner votre adresse e-mail.'
+          ? 'Veuillez renseigner votre adresse e-mail (champ en haut du formulaire).'
           : 'Adresse e-mail invalide.',
       );
+      emailEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      emailEl?.focus();
+      return;
+    }
+
+    // Vérification finale avant envoi (évite 400 si le champ a été vidé entre-temps)
+    const emailFinal = (document.getElementById('email') as HTMLInputElement | null)?.value?.trim() ?? '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailFinal)) {
+      setSubmitError('Adresse e-mail invalide ou manquante.');
+      document.getElementById('email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
     setSubmitting(true);
     try {
+      // Toujours reprendre l'email depuis le DOM pour l'envoi (évite tout décalage)
+      const emailForPayload = (document.getElementById('email') as HTMLInputElement | null)?.value?.trim() ?? '';
       const payload = {
         ...formDataRef.current,
+        email: emailForPayload,
       };
+
       const fileInput = fileInputRef.current;
       const files = fileInput?.files ? Array.from(fileInput.files) : [];
       const hasFiles = files.length > 0;
@@ -174,9 +212,9 @@ export const App: React.FC = () => {
             <section className="form-section">
               <p className="form-section-kicker">Informations Générales</p>
 
-              <div className="form-field">
+              <div className="form-field" id="form-field-email">
                 <label className="field-label" htmlFor="email">
-                  Adresse e-mail
+                  Adresse e-mail <span style={{ color: '#ff0671' }}>*</span>
                 </label>
                 <input
                   id="email"
@@ -371,7 +409,18 @@ export const App: React.FC = () => {
                     Ajoutez une image ou un PDF pour illustrer vos attentes
                   </p>
 
-                  <label className="file-input-wrapper">
+                  <div
+                    className="file-input-wrapper"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                  >
                     <input
                       ref={fileInputRef}
                       id="file"
@@ -380,9 +429,11 @@ export const App: React.FC = () => {
                       className="file-input-hidden"
                       onChange={handleFormChange}
                     />
-                    <span className="file-button">Choose File</span>
-                    <span className="file-name">No file chosen</span>
-                  </label>
+                    <span className="file-button">Choisir un fichier</span>
+                    <span className="file-name">
+                      {referenceFileLabel || 'Aucun fichier choisi'}
+                    </span>
+                  </div>
                 </div>
               </section>
             )}

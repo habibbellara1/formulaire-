@@ -631,6 +631,13 @@ body {
   border-radius: 12px;
   border: 1px solid #374151;
   background-color: rgba(31, 41, 55, 0.85);
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.file-input-wrapper:hover {
+  border-color: #ff0671;
+  background-color: rgba(31, 41, 55, 0.95);
 }
 
 .file-input-hidden {

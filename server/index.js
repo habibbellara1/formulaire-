@@ -13,7 +13,7 @@ app.use(express.json({ limit: '512kb' }));
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo par fichier
-}).array('files', 10);
+}).any(); // accepte 'data' (texte) + 'files' (fichiers) pour que req.body.data soit bien rempli
 
 function escapeHtml(s) {
   if (typeof s !== 'string') return '';
@@ -73,12 +73,17 @@ app.post('/api/submit', (req, res, next) => {
 }, async (req, res) => {
   try {
     let body = req.body || {};
-    if (req.body && typeof req.body.data === 'string') {
+    const rawData = req.body && req.body.data;
+    if (typeof rawData === 'string') {
       try {
-        body = JSON.parse(req.body.data);
-      } catch {
-        body = req.body;
+        body = JSON.parse(rawData);
+      } catch (e) {
+        console.error('Parse body.data:', e);
+        return res.status(400).json({ success: false, message: 'Format des données invalide.' });
       }
+    }
+    if (!body || typeof body !== 'object') {
+      return res.status(400).json({ success: false, message: 'Données formulaire manquantes. Réessayez sans pièce jointe ou vérifiez votre connexion.' });
     }
     const email = (body.email || '').trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
