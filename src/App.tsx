@@ -38,7 +38,7 @@ export const App: React.FC = () => {
         delete formDataRef.current[t.id];
       } else if (t.id === 'exemplaire') {
         selectedExemplaireFilesRef.current = files;
-        setExemplaireFileLabel(files.length ? (files.length > 1 ? `${files.length} images` : files[0].name) : '');
+        setExemplaireFileLabel(files.length ? (files.length > 1 ? `${files.length} fichiers` : files[0].name) : '');
         delete formDataRef.current[t.id];
       } else {
         const names = files.map((f) => f.name).join(', ');
@@ -108,51 +108,47 @@ export const App: React.FC = () => {
         email: emailForPayload,
       };
 
-      const filesFromRef = selectedFilesRef.current.length
+      // Collecte de tous les fichiers (Logo + Visuel) : refs + inputs DOM au moment de l'envoi
+      const fromLogo = selectedFilesRef.current.length > 0
         ? selectedFilesRef.current
         : (fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : []);
-      const filesFromExemplaire = selectedExemplaireFilesRef.current.length
+      const fromVisuel = selectedExemplaireFilesRef.current.length > 0
         ? selectedExemplaireFilesRef.current
         : (exemplaireFileInputRef.current?.files ? Array.from(exemplaireFileInputRef.current.files) : []);
-      const files = [...filesFromRef, ...filesFromExemplaire];
+      const allFileInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+      const fromDom: File[] = [];
+      allFileInputs.forEach((input) => {
+        if (input.files && input.files.length > 0) {
+          fromDom.push(...Array.from(input.files));
+        }
+      });
+      const seen = new Set<string>();
+      const files: File[] = [];
+      [...fromLogo, ...fromVisuel, ...fromDom].forEach((file) => {
+        const key = `${file.name}-${file.size}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          files.push(file);
+        }
+      });
       const hasFiles = files.length > 0;
 
-      const bodyToSend = hasFiles
-        ? (async () => {
-            const filesBase64 = await Promise.all(
-              files.map(
-                (f) =>
-                  new Promise<{ name: string; data: string; type: string }>(
-                    (resolve, reject) => {
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const dataUrl = reader.result as string;
-                        const b64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
-                        if (b64 && b64.length > 0) {
-                          resolve({
-                            name: f.name,
-                            data: b64,
-                            type: f.type || 'application/octet-stream',
-                          });
-                        } else {
-                          reject(new Error('Lecture fichier échouée'));
-                        }
-                      };
-                      reader.onerror = () => reject(reader.error);
-                      reader.readAsDataURL(f);
-                    }
-                  )
-              )
-            );
-            return { ...payload, _files: filesBase64 };
-          })()
-        : payload;
-
-      const res = await fetch(`${API_URL}/api/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(await bodyToSend),
-      });
+      let res: Response;
+      if (hasFiles) {
+        const formData = new FormData();
+        formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }), 'data.json');
+        files.forEach((file) => formData.append('files', file));
+        res = await fetch(`${API_URL}/api/submit`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        res = await fetch(`${API_URL}/api/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
       const text = await res.text();
       let data: { message?: string } = {};
       try {
@@ -589,6 +585,7 @@ export const App: React.FC = () => {
                         id="file"
                         type="file"
                         accept="image/*,.pdf"
+                        multiple
                         className="file-input-hidden"
                         onChange={handleFormChange}
                       />
@@ -815,13 +812,14 @@ export const App: React.FC = () => {
                       ref={exemplaireFileInputRef}
                       id="exemplaire"
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.pdf"
+                      multiple
                       className="file-input-hidden"
                       onChange={handleFormChange}
                     />
-                    <span className="file-button">Importez des images</span>
+                    <span className="file-button">Importez des images ou PDF</span>
                     <span className="file-name">
-                      {exemplaireFileLabel || 'Aucune image choisie'}
+                      {exemplaireFileLabel || 'Aucun fichier choisi'}
                     </span>
                   </div>
                 </div>
