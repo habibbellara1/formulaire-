@@ -6,7 +6,8 @@ const partenaireImg =
 
 // URL de l'API d'envoi d'e-mail
 // En développement : http://localhost:3001 (via `npm run server` ou `npm run start`)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// En production (Netlify) : URL relative → /api/submit (redirigé vers Netlify Function)
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
 
 type Service = 'logo' | 'webapp' | 'visuel';
 
@@ -179,7 +180,7 @@ export const App: React.FC = () => {
           : message,
       );
       if (isConnectionRefused && typeof window !== 'undefined' && !/localhost|127\.0\.0\.1/.test(window.location.hostname)) {
-        setSubmitError("Envoi impossible : déployez l'API (server/) sur Render ou Railway, puis définissez VITE_API_URL dans Netlify.");
+        setSubmitError("Erreur de connexion au serveur. Veuillez réessayer plus tard.");
       }
     } finally {
       setSubmitting(false);

@@ -2,7 +2,17 @@
   command = "npm run build"
   publish = "dist"
 
-# Redirection SPA : toutes les routes vers index.html (au cas où)
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Proxy /api/submit vers la Netlify Function
+[[redirects]]
+  from = "/api/submit"
+  to = "/.netlify/functions/submit"
+  status = 200
+
+# Redirection SPA : toutes les routes vers index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
