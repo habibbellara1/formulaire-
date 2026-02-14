@@ -332,7 +332,7 @@ export const App: React.FC = () => {
                   }
                   onClick={() => setService('webapp')}
                 >
-                  Application Web
+                  Site web
                 </button>
                 <button
                   type="button"
@@ -643,11 +643,11 @@ export const App: React.FC = () => {
 
             {service === 'webapp' && (
               <section className="form-section">
-                <p className="form-section-kicker">Section Application Web</p>
+                <p className="form-section-kicker">Section Site web</p>
 
                 <div className="form-field">
                   <label className="field-label" htmlFor="webType">
-                    Type d&apos;application web
+                    Type de site web
                   </label>
                   <select
                     id="webType"

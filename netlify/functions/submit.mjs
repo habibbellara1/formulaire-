@@ -102,7 +102,7 @@ const labels = {
   visualSector: "Secteur d'activité (visuel)",
   visualBrand: 'Nom entreprise / marque',
   visualGoal: 'Objectif principal du visuel',
-  webType: "Type d'application web",
+  webType: "Type de site web",
   webFeatures: 'Fonctionnalités principales souhaitées',
   webStyle: 'Style de design préféré (web)',
   webTech: 'Technologies ou frameworks préférés',
